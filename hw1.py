@@ -10,28 +10,28 @@ import numpy
 import math
 import sys
 
-
+# objective function
 def mse(y,y_bar):
     return sum([(p - y_bar[i])**2 for i,p in enumerate(y)]) / len(y)
 
-
-def fX(t,a0,b0,c0):
-    a = a0*(t**2)
-    b = b0*t
-    c = c0
-    return a+b+c
+# initial model X = a2*t**2 + a1*t + a0
+def fX(t,a2,a1,a0):
+    return a2*(t**2) + a1*t + a0
     
-
+# partial derivative of mse w.r.t alpha2
 def dAplha2(t,x,x_pred):
-    return t**2 * (x - x_pred)    
-
+    return t**2 * (x - x_pred)   
+ 
+# partial derivative of mse w.r.t alpha1
 def dAlpha1(t,x,x_pred):
     return t * (x - x_pred)
 
+# partial derivative of mse w.r.t alpha0
 def dAlpha0(x,x_pred):
     return x - x_pred
 
-
+# evaluates the gradient of each partial derivative
+# re-used for alpha2, alpha1 and alpha0
 def gradient(n,dAlpha):
     return (-2/n) * sum(dAlpha)
 
@@ -47,6 +47,7 @@ def gradient_descent(X,t,learn_rate,coeffs):
 partials_alpha1\t{partials_alpha1}
 partials_alpha0\t{partials_alpha0}''')
     
+    # update model coefficients
     coeffs[0] = coeffs[0] - learn_rate * gradient(len(partials_alpha2),partials_alpha2)
     coeffs[1] = coeffs[1] - learn_rate * gradient(len(partials_alpha1),partials_alpha1)
     coeffs[2] = coeffs[2] - learn_rate * gradient(len(partials_alpha0),partials_alpha0)
@@ -73,44 +74,54 @@ def regress(X,t,coeffs,max_iter,rate,tol):
 
     while i < max_iter:
         
-        if alpha0 and alpha1 and alpha2:
-            break
-        
         loss,new_coeffs,X_pred = gradient_descent(X,t,rate,coeffs)
         losses.append(loss)
         
-        if numpy.abs(coeffs[0] - new_coeffs[0]) < tol:
+        deltaA2 = numpy.abs(coeffs[0] - new_coeffs[0])
+        deltaA1 = numpy.abs(coeffs[1] - new_coeffs[1])
+        deltaA0 = numpy.abs(coeffs[2] - new_coeffs[2])
+        
+        if all(delta < tol for delta in [deltaA0,deltaA1,deltaA2]):
             alpha2 = coeffs[0]
-        elif numpy.abs(coeffs[1] - new_coeffs[1]) < tol:
-            alpha1 = coeffs[1]   
-        elif numpy.abs(coeffs[2] - new_coeffs[2]) < tol:
+            alpha1 = coeffs[1] 
             alpha0 = coeffs[2]
-       
+         
+        
         i += 1
     
-    return X_pred
+    coeffs = [alpha2,alpha1,alpha0]
+    return X_pred,coeffs
         
 
 def main():
     
-    # USING X-coordinate only
+    # Polynomial regression on X-coordinate only
     # t = time value for each x-coordinate
     # coeffs = random coefficients a2,a1 and a0 for the initial model
+    # initial model >> X = a2*t**2 + a1*t + a0; see function fX
     X = [2,1.08,-0.83,-1.97,-1.31,0.57]
     t = [1,2,3,4,5,6]
-    coeffs = [5,6,5]
+    original_coeffs = [9,-6,2]
+    coeffs = [9,-6,2]
     max_iter = 10000
     rate = 0.0001
     tol = 0.01
     
     # final prediction, X_pred obtained after minimising sum of squares
-    X_pred = regress(X,t,coeffs,max_iter,rate,tol)
+    X_pred,final_coeffs = regress(X,t,coeffs,max_iter,rate,tol)
+    print('original coeffs\t',original_coeffs)
+    print('final coeffs\t',final_coeffs)
    
     plt.figure(figsize=(20,10))
     plt.plot(t,X,marker='.',markersize=20,label='original')
     plt.plot(t,X_pred,marker='s',label='final_prediction')
     plt.legend(loc='lower right')
+    plt.xlabel('Time')
+    plt.ylabel('X')
+    plt.savefig('output.png')
     plt.show()
+    
+    
     
     
     
