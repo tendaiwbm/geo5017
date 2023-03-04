@@ -18,30 +18,33 @@ def mse(y,y_bar):
 def fX(t,a2,a1,a0):
     return a2*(t**2) + a1*t + a0
     
-# partial derivative of mse w.r.t alpha2
-def dAplha2(t,x,x_pred):
+# partial derivative of sse w.r.t alpha2
+def dAlpha2(t,x,x_pred):
     return t**2 * (x - x_pred)   
  
-# partial derivative of mse w.r.t alpha1
+# partial derivative of sse w.r.t alpha1
 def dAlpha1(t,x,x_pred):
     return t * (x - x_pred)
 
-# partial derivative of mse w.r.t alpha0
+# partial derivative of sse w.r.t alpha0
 def dAlpha0(x,x_pred):
     return x - x_pred
 
-# evaluates the gradient of each partial derivative
+#def dAlpha22(t,x,x_pred):
+#    return 2t*
+
+# evaluates each partial derivative (coefficient)
 # re-used for alpha2, alpha1 and alpha0
 def gradient(n,dAlpha):
-    return (-2/n) * sum(dAlpha)
+    return (-2) * sum(dAlpha)
 
 
-def gradient_descent(X,t,learn_rate,coeffs):
+def gradient_descent(X,t,learn_rate,coeffs,pa0,pa1,pa2):
     
     X_pred = [fX(ti,*coeffs) for ti in t]
-    partials_alpha2 = [dAplha2(t[i], X[i], X_pred[i]) for i,x in enumerate(X)]
-    partials_alpha1 = [dAlpha1(t[i], X[i], X_pred[i]) for i,x in enumerate(X)]
-    partials_alpha0 = [dAlpha0(X[i], X_pred[i]) for i,x in enumerate(X)]
+    partials_alpha2 = [pa2(t[i], X[i], X_pred[i]) for i,x in enumerate(X)]
+    partials_alpha1 = [pa1(t[i], X[i], X_pred[i]) for i,x in enumerate(X)]
+    partials_alpha0 = [pa0(X[i], X_pred[i]) for i,x in enumerate(X)]
     
     print(f'''partials_aplha2\t{partials_alpha2}
 partials_alpha1\t{partials_alpha1}
@@ -64,7 +67,7 @@ partials_alpha0\t{partials_alpha0}''')
     return loss,coeffs,X_pred
 
 
-def regress(X,t,coeffs,max_iter,rate,tol):
+def constant_speed(X,t,coeffs,max_iter,rate,tol):
     
     losses = []
     alpha2 = None
@@ -74,7 +77,7 @@ def regress(X,t,coeffs,max_iter,rate,tol):
 
     while i < max_iter:
         
-        loss,new_coeffs,X_pred = gradient_descent(X,t,rate,coeffs)
+        loss,new_coeffs,X_pred = gradient_descent(X,t,rate,coeffs,dAlpha0,dAlpha1,dAlpha2)
         losses.append(loss)
         
         deltaA2 = numpy.abs(coeffs[0] - new_coeffs[0])
@@ -90,8 +93,35 @@ def regress(X,t,coeffs,max_iter,rate,tol):
         i += 1
     
     coeffs = [alpha2,alpha1,alpha0]
-    return X_pred,coeffs
+    return X_pred,coeffs,losses
+ 
+
+def constant_acc(X,t,coeffs,max_iter,rate,tol):
+    losses = []
+    alpha2 = None
+    alpha1 = None
+    alpha0 = None
+    i = 0
+
+    while i < max_iter:
         
+        loss,new_coeffs,X_pred = gradient_descent(X,t,rate,coeffs)
+        losses.append(loss)
+        
+        deltaA2 = numpy.abs(coeffs[0] - new_coeffs[0])
+        deltaA1 = numpy.abs(coeffs[1] - new_coeffs[1])
+        deltaA0 = numpy.abs(coeffs[2] - new_coeffs[2])
+        
+        if all(delta < tol for delta in [deltaA0,deltaA1,deltaA2]) or loss < tol:
+            alpha2 = coeffs[0]
+            alpha1 = coeffs[1] 
+            alpha0 = coeffs[2]
+         
+        
+        i += 1
+    
+    coeffs = [alpha2,alpha1,alpha0]
+    return X_pred,coeffs,losses
 
 def main():
     
@@ -99,27 +129,30 @@ def main():
     # t = time value for each x-coordinate
     # coeffs = random coefficients a2,a1 and a0 for the initial model
     # initial model >> X = a2*t**2 + a1*t + a0; see function fX
-    X = [2,1.08,-0.83,-1.97,-1.31,0.57]
+    data = {'X': [2,1.08,-0.83,-1.97,-1.31,0.57],
+            'Y': [0,1.68,1.82,0.28,-1.51,-1.91],
+            'Z': [1,2.38,2.49,2.15,2.59,4.32]}
     t = [1,2,3,4,5,6]
-    original_coeffs = [9,-6,2]
-    coeffs = [9,-6,2]
+    original_coeffs = [9,-20,2]  
+    coeffs = [9,-20,2]
     max_iter = 10000
     rate = 0.0001
     tol = 0.01
-    
-    # final prediction, X_pred obtained after minimising sum of squares
-    X_pred,final_coeffs = regress(X,t,coeffs,max_iter,rate,tol)
-    print('original coeffs\t',original_coeffs)
-    print('final coeffs\t',final_coeffs)
-   
-    plt.figure(figsize=(20,10))
-    plt.plot(t,X,marker='.',markersize=20,label='original')
-    plt.plot(t,X_pred,marker='s',label='final_prediction')
-    plt.legend(loc='lower right')
-    plt.xlabel('Time')
-    plt.ylabel('X')
-    plt.savefig('output.png')
-    plt.show()
+    for j,X in enumerate(list(data.values())):
+        
+        # final prediction, X_pred, obtained after minimising sum of squares and final model coefficients
+        X_pred,final_coeffs,losses = constant_speed(X,t,coeffs,max_iter,rate,tol)
+        print('original coeffs\t',original_coeffs)
+        print('final coeffs\t',final_coeffs)
+        
+        plt.figure(figsize=(20,10))
+        plt.plot(t,X,marker='.',markersize=20,label='original')
+        plt.plot(t,X_pred,marker='s',label='final_prediction')
+        plt.legend(loc='lower right')
+        plt.xlabel('Time')
+        plt.ylabel('X')
+        plt.savefig(f'output{list(data.keys())[j]}.png')
+        plt.show()
     
     
     
