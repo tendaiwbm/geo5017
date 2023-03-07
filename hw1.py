@@ -45,25 +45,31 @@ def gradient_descent(X,t,learn_rate,coeffs,partial0,partial1,partial2):
     partials_alpha0 = [partial0(X[i], X_pred[i]) for i,x in enumerate(X)]
     partials_alpha2 = [partial2(t[i], X[i], X_pred[i]) for i,x in enumerate(X)]
         
-    print(f'''partials_aplha2\t{partials_alpha2}
-partials_alpha1\t{partials_alpha1}
-partials_alpha0\t{partials_alpha0}''')
+#     print(f'''partials_aplha2\t{partials_alpha2}
+# partials_alpha1\t{partials_alpha1}
+# partials_alpha0\t{partials_alpha0}''')
  
     # update model coefficients
     coeffs[0] = coeffs[0] - learn_rate * gradient(len(partials_alpha2),partials_alpha2)
     coeffs[1] = coeffs[1] - learn_rate * gradient(len(partials_alpha1),partials_alpha1)
     coeffs[2] = coeffs[2] - learn_rate * gradient(len(partials_alpha0),partials_alpha0)
 
-    print('coeffs\t',coeffs)
+    # print('coeffs\t',coeffs)
     
     X_pred = [fX(ti,*coeffs) for ti in t]
     loss = mse(X,X_pred)
+    residual_list = []
+    for x, y in zip(X, X_pred):
+        residual = x - y
+        residual_list.append(residual)
+    res_temp = numpy.array(residual_list)
+    residual_end = numpy.sum(res_temp, axis=0)
     
-    print('X\t',X)
-    print('X-predicted\t',X_pred)
-    print('loss\t',loss)
+    # print('X\t',X)
+    # print('X-predicted\t',X_pred)
+    # print('loss\t',loss)
     
-    return loss,coeffs,X_pred
+    return loss,coeffs,X_pred, residual_end
 
 
 def constant_acceleration(X,t,coeffs,max_iter,rate,tol):
@@ -76,7 +82,7 @@ def constant_acceleration(X,t,coeffs,max_iter,rate,tol):
 
     while i < max_iter:
         
-        loss,new_coeffs,X_pred = gradient_descent(X,t,rate,coeffs,dAlpha0,dAlpha1,dAlpha2)
+        loss,new_coeffs,X_pred,residual = gradient_descent(X,t,rate,coeffs,dAlpha0,dAlpha1,dAlpha2)
         losses.append(loss)
         
         deltaA2 = numpy.abs(coeffs[0] - new_coeffs[0])
@@ -92,7 +98,7 @@ def constant_acceleration(X,t,coeffs,max_iter,rate,tol):
         i += 1
     
     coeffs = [alpha2,alpha1,alpha0]
-    return X_pred,coeffs,losses
+    return X_pred,coeffs,losses,residual
  
 def constant_speed():
     '''
@@ -130,11 +136,12 @@ def main():
     for j,X in enumerate(list(data.values())):
         
         # final prediction, X_pred, obtained after minimising sum of squares and final model coefficients
-        X_pred,final_coeffs,losses = constant_acceleration(X,t,coeffs,max_iter,rate,tol)
+        X_pred,final_coeffs,losses,residual = constant_acceleration(X,t,coeffs,max_iter,rate,tol)
         total_loss.append(losses)
         
         print('original coeffs\t',original_coeffs)
         print('final coeffs\t',final_coeffs)
+        print('final residual\t', residual)
         
         plt.figure(figsize=(20,10))
         plt.plot(t,X,marker='.',markersize=20,label='original')
